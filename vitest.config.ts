@@ -50,17 +50,29 @@ export default defineConfig({
         lines: 80,
       },
       // Bestanden die meegerekend worden in coverage
-      // PR #2: Alleen de nieuwe service-laag bestanden meten.
-      // PR #1-bestanden (lib/*, routes/*, root.tsx) hebben eigen tests of
-      // worden in latere PR's gedekt.
+      // PR #3: App Proxy eindpunten, middleware en helpers worden gemeten.
+      // PR #2-bestanden (services/*) zijn al gedekt in eerdere PR.
       include: [
         "app/services/**/*.ts",
+        "app/lib/app-proxy-hmac.server.ts",
+        "app/lib/idempotency.server.ts",
+        "app/lib/guest-jwt.server.ts",
+        "app/lib/rate-limiter.server.ts",
+        "app/lib/request-schemas.ts",
+        "app/lib/shopify-queries.server.ts",
+        "app/lib/structured-logger.server.ts",
+        "app/routes/apps.returns.start.ts",
+        "app/routes/apps.returns.guest-lookup.ts",
+        "app/routes/apps.returns.submit.ts",
+        "app/routes/apps.returns.$id.status.ts",
         "db/schema.ts",
       ],
       exclude: [
         "**/*.test.*",
         "**/*.d.ts",
         "**/+types/**",
+        "app/lib/__tests__/**",
+        "app/routes/__tests__/**",
       ],
     },
   },
