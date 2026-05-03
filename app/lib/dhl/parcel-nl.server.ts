@@ -211,18 +211,21 @@ async function vraagDhlTokenAan(config: DhlConfig): Promise<{ accessToken: strin
     );
   }
 
-  const data = await reactie.json() as {
-    accessToken?: string;
-    expiresIn?: number;
-  };
+  const data = await reactie.json() as
+    | { accessToken?: string; expiresIn?: number }
+    | Array<{ accessToken?: string; expiresIn?: number }>;
 
-  if (!data.accessToken) {
+  // DHL /authenticate/api-key retourneert een ARRAY van token-objecten, niet een enkel object.
+  // We ondersteunen beide vormen voor tolerantie.
+  const tokenObject = Array.isArray(data) ? data[0] : data;
+
+  if (!tokenObject?.accessToken) {
     throw new Error("DHL token-antwoord mist accessToken-veld");
   }
 
   return {
-    accessToken: data.accessToken,
-    expiresIn: data.expiresIn ?? 3600,
+    accessToken: tokenObject.accessToken,
+    expiresIn: tokenObject.expiresIn ?? 3600,
   };
 }
 

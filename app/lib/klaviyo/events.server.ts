@@ -21,6 +21,7 @@
  */
 
 import * as Sentry from "@sentry/node";
+import { Decimal } from "decimal.js";
 
 // ---------------------------------------------------------------------------
 // Event-naam union type
@@ -192,9 +193,11 @@ function bouwKlaviyoBody(event: KlaviyoEvent): object {
       attributes: {
         properties: event.properties,
         time: new Date().toISOString(),
-        value: typeof event.properties.total_refund_amount === "number"
-          ? event.properties.total_refund_amount
-          : parseFloat(String(event.properties.total_refund_amount)) || 0,
+        // Gebruik Decimal.js om float-drift te vermijden (bijv. 0.1 + 0.2 ≠ 0.3 in native float)
+        // Klaviyo's `value` verwacht een JS-number per hun API-spec — Decimal(...).toNumber() rondt correct af
+        value: event.properties.total_refund_amount != null
+          ? new Decimal(String(event.properties.total_refund_amount)).toNumber()
+          : 0,
         unique_id: event.uniqueId,
         metric: {
           data: {

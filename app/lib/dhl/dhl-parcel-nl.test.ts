@@ -75,8 +75,9 @@ const testLabelInput: DhlReturnLabelInput = {
 // ---------------------------------------------------------------------------
 
 function mockTokenAntwoord(accessToken = "test-token-abc123") {
+  // DHL /authenticate/api-key retourneert een array van token-objecten
   return new Response(
-    JSON.stringify({ accessToken, expiresIn: 3600 }),
+    JSON.stringify([{ accessToken, expiresIn: 3600 }]),
     { status: 200, headers: { "Content-Type": "application/json" } },
   );
 }
@@ -526,8 +527,9 @@ describe("DHL Parcel NL client", () => {
     });
 
     it("gooit fout als token-antwoord accessToken mist", async () => {
+      // Array-formaat zonder accessToken — simuleert kapot DHL-antwoord
       fetchMock.mockResolvedValueOnce(
-        new Response(JSON.stringify({ expiresIn: 3600 }), { status: 200 }),
+        new Response(JSON.stringify([{ expiresIn: 3600 }]), { status: 200 }),
       );
 
       const config = {

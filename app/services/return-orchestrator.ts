@@ -22,6 +22,7 @@
  */
 
 import * as Sentry from "@sentry/node";
+import { Decimal } from "decimal.js";
 import { eq } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import { returns, returnItems } from "../../db/schema.js";
@@ -279,8 +280,9 @@ async function verzetStoreCredit(
     return;
   }
 
-  const bedrag = parseFloat(context.totalRefundAmount ?? "0");
-  if (bedrag <= 0) {
+  // Gebruik Decimal.js om float-drift te vermijden bij bedragen zoals 0.1 + 0.2
+  const bedrag = new Decimal(context.totalRefundAmount ?? "0").toFixed(2);
+  if (new Decimal(bedrag).lte(0)) {
     process.stderr.write(
       JSON.stringify({
         level: "WARN",
@@ -296,7 +298,7 @@ async function verzetStoreCredit(
   try {
     await creditCustomer({
       customerId: context.customerId,
-      amount: bedrag,
+      amount: new Decimal(bedrag).toNumber(),
       currency: "EUR",
       reason: `Retourvergoeding voor retour ${returnId}`,
       returnId,

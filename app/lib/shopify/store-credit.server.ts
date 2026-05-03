@@ -238,9 +238,10 @@ export async function creditCustomer(
       }
 
       const shopifyTransactieId = storeCreditAccountTransaction.id;
-      const balansNa = parseFloat(
+      // Gebruik Decimal.js voor nauwkeurige EUR-rekenkunde — voorkomt float-drift bij opslaan als numeric(10,2)
+      const balansNa = new Decimal(
         storeCreditAccountTransaction.account.balance.amount,
-      );
+      ).toFixed(2);
 
       // Stap 4: Insert wallet_transactions-rij
       await db.insert(walletTransactions).values({
@@ -251,7 +252,7 @@ export async function creditCustomer(
         currency: input.currency,
         shopifyStoreCreditAccountTransactionId: shopifyTransactieId,
         reason: input.reason,
-        balanceAfter: String(balansNa.toFixed(2)),
+        balanceAfter: balansNa,
         createdAt: new Date(),
       });
 
@@ -271,7 +272,7 @@ export async function creditCustomer(
 
       return {
         shopifyTransactionId: shopifyTransactieId,
-        balanceAfter: balansNa,
+        balanceAfter: new Decimal(balansNa).toNumber(),
       };
     },
   );
