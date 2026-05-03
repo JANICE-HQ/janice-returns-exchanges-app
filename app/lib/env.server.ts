@@ -34,11 +34,28 @@ const envSchema = z.object({
       "SHOPIFY_SHOP_DOMAIN moet het formaat 'xxx.myshopify.com' hebben",
     ),
 
+  /**
+   * Shopify Custom App client secret — gebruikt voor App Proxy HMAC-verificatie.
+   * Te vinden in: Shopify Partner Dashboard → App → API credentials → Client secret.
+   */
+  SHOPIFY_API_SECRET: z
+    .string()
+    .min(1, "SHOPIFY_API_SECRET is vereist (Shopify Custom App client secret voor HMAC-verificatie)"),
+
   APP_URL: z
     .string()
     .url(
       "APP_URL moet een geldige URL zijn (bijv. https://returns.janice.com)",
     ),
+
+  // --- JWT ---
+  /**
+   * Geheim voor het ondertekenen van gast-JWTs (15 min geldig).
+   * Minimaal 32 tekens — gebruik een willekeurige 64-tekens string in productie.
+   */
+  JWT_SECRET: z
+    .string()
+    .min(32, "JWT_SECRET moet minimaal 32 tekens bevatten"),
 
   // --- Database ---
   DATABASE_URL: z
