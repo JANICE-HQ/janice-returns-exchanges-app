@@ -1,0 +1,166 @@
+{
+  "portal": {
+    "skipToContent": "Ga naar inhoud",
+    "title": "Retourneren of ruilen",
+    "subtitle": "Je kunt producten binnen 30 dagen na ontvangst retourneren. Retourneren binnen de EU is gratis.",
+    "loginCta": "Inloggen om mijn bestelling te zien",
+    "guestCta": "Bestelling opzoeken als gast"
+  },
+  "guest": {
+    "title": "Bestelling opzoeken",
+    "subtitle": "Vul je bestelnummer en e-mailadres in om je bestelling te vinden.",
+    "orderNumberLabel": "Bestelnummer",
+    "orderNumberPlaceholder": "#1042",
+    "emailLabel": "E-mailadres",
+    "emailPlaceholder": "jouw@email.nl",
+    "submitButton": "Bestelling zoeken",
+    "notFoundMessage": "Geen bestelling gevonden. Controleer je gegevens.",
+    "rateLimitMessage": "Te veel pogingen. Probeer over {minutes} minuten opnieuw.",
+    "rateLimitCountdown": "Probeer over {seconds} seconden opnieuw.",
+    "errorGeneral": "Er is iets misgegaan. Probeer het opnieuw."
+  },
+  "steps": {
+    "1": "Artikelen",
+    "2": "Reden",
+    "3": "Afhandeling",
+    "4": "Verzending",
+    "5": "Bevestigen"
+  },
+  "items": {
+    "title": "Welke artikelen wil je retourneren?",
+    "subtitle": "Selecteer de artikelen die je wilt retourneren en geef de hoeveelheid op.",
+    "orderLabel": "Bestelling",
+    "dateLabel": "Besteldatum",
+    "totalLabel": "Totaalbedrag",
+    "qtyLabel": "Aantal",
+    "continueButton": "Verder",
+    "noItemsError": "Selecteer minimaal een artikel om door te gaan.",
+    "finalSaleBlocker": "Final sale. Dit artikel kan niet worden geretourneerd.",
+    "windowExpiredBlocker": "De retourperiode van 30 dagen voor dit artikel is verstreken.",
+    "alreadyReturnedBlocker": "Dit artikel is al geretourneerd."
+  },
+  "reason": {
+    "title": "Wat is de reden van retour?",
+    "subtitle": "Geef per artikel aan waarom je het wilt retourneren.",
+    "selectPlaceholder": "Kies een reden",
+    "notePlaceholder": "Toelichting (optioneel)",
+    "noteLabel": "Toelichting (optioneel)",
+    "noteMaxChars": "Max. 500 tekens",
+    "selectReasonError": "Selecteer een reden om door te gaan.",
+    "continueButton": "Verder",
+    "codes": {
+      "TOO_BIG": "Te groot",
+      "TOO_SMALL": "Te klein",
+      "COLOR_DIFFERENT": "Kleur wijkt af",
+      "DAMAGED": "Beschadigd ontvangen",
+      "LATE_DELIVERY": "Te laat geleverd",
+      "WRONG_ITEM": "Verkeerd artikel ontvangen",
+      "NOT_AS_DESCRIBED": "Niet zoals omschreven",
+      "CHANGED_MIND": "Beviel me niet"
+    }
+  },
+  "resolution": {
+    "title": "Hoe wil je het oplossen?",
+    "subtitle": "Kies de afhandeling die bij je past.",
+    "continueButton": "Verder",
+    "opsReviewTitle": "Onze klantenservice neemt contact op",
+    "opsReviewText": "Vanwege de aard van je retourverzoek beoordeelt onze klantenservice je aanvraag. Je ontvangt binnen 2 werkdagen bericht.",
+    "refund": {
+      "title": "Geld terug",
+      "description": "Terugbetaling op je oorspronkelijke betaalmethode.",
+      "timeline": "5-7 werkdagen na ontvangst"
+    },
+    "exchange": {
+      "title": "Ruilen",
+      "description": "Ruil het artikel voor een andere maat of kleur.",
+      "timeline": "Directe bestelling na goedkeuring"
+    },
+    "store_credit": {
+      "title": "Tegoed",
+      "description": "Ontvang 5% extra bij je tegoed. Direct beschikbaar in je portemonnee.",
+      "timeline": "Direct beschikbaar, geen wachttijd",
+      "badge": "+5% bonus"
+    }
+  },
+  "method": {
+    "title": "Hoe verstuur je je pakket?",
+    "subtitle": "Kies je retourmethode.",
+    "continueButton": "Verder",
+    "qr": {
+      "title": "DHL Pakketpunt. QR-code",
+      "description": "Printloos. Scan de QR-code bij een DHL-pakketpunt. Geen printer nodig.",
+      "badge": "Aanbevolen"
+    },
+    "label": {
+      "title": "Print zelf je label",
+      "description": "Wij sturen een PDF-label naar je e-mailadres. Print het uit en plak het op het pakket."
+    }
+  },
+  "confirm": {
+    "title": "Controleer je retour",
+    "subtitle": "Controleer de gegevens voordat je je retour indient.",
+    "itemsHeader": "Artikelen",
+    "resolutionHeader": "Afhandeling",
+    "methodHeader": "Verzendmethode",
+    "refundHeader": "Terugbetaling",
+    "termsLabel": "Ik ga akkoord met de",
+    "termsLink": "retourvoorwaarden",
+    "termsRequiredError": "Accepteer de retourvoorwaarden om door te gaan.",
+    "submitButton": "Bevestigen en opsturen",
+    "estimatedTimeline": "Label binnen 1 uur per e-mail. Refund binnen 5-7 werkdagen na ontvangst.",
+    "backButton": "Terug"
+  },
+  "success": {
+    "title": "Retour ingediend",
+    "subtitle": "Je retourverzoek is succesvol ingediend.",
+    "returnIdLabel": "Retourreferentie",
+    "orderLabel": "Bestelling",
+    "nextStepsTitle": "Wat gebeurt er nu?",
+    "nextSteps": [
+      "Je krijgt een bevestigingsmail op je e-mailadres.",
+      "Je label of QR-code ontvang je binnen 1 uur per e-mail.",
+      "Pak het pakket goed in met de originele verpakking.",
+      "Lever het pakket in bij een DHL-pakketpunt of geef het af aan de koerier.",
+      "Wij verwerken je retour binnen 5 werkdagen na ontvangst."
+    ],
+    "backToAccount": "Terug naar mijn account",
+    "backToStore": "Terug naar de winkel"
+  },
+  "status": {
+    "title": "Status van je retour",
+    "subtitle": "Bekijk de huidige status en het verloop van je retourverzoek.",
+    "returnIdLabel": "Retourreferentie",
+    "currentStateLabel": "Huidige status",
+    "timelineTitle": "Verloop",
+    "notFoundMessage": "Retour niet gevonden.",
+    "states": {
+      "DRAFT": "Concept",
+      "SUBMITTED": "Ingediend",
+      "APPROVED": "Goedgekeurd",
+      "REJECTED": "Afgewezen",
+      "LABEL_ISSUED": "Label verstuurd",
+      "IN_TRANSIT": "Onderweg",
+      "RECEIVED": "Ontvangen",
+      "INSPECTING": "In behandeling",
+      "COMPLETED": "Afgerond",
+      "CANCELLED": "Geannuleerd",
+      "EXPIRED": "Verlopen"
+    }
+  },
+  "trust": {
+    "title": "Waarom retourneren bij JANICE",
+    "signals": [
+      "30 dagen retourperiode na ontvangst.",
+      "Gratis retourneren binnen de EU.",
+      "Veilig betaald via Mollie. Terugbetaling op originele betaalmethode.",
+      "Persoonlijke klantenservice via e-mail en chat.",
+      "Geretourneerde artikelen worden hergebruikt of gerecycled."
+    ]
+  },
+  "errors": {
+    "generic": "Er is iets misgegaan. Probeer het opnieuw.",
+    "notFound": "Niet gevonden.",
+    "unauthorized": "Je hebt geen toegang tot deze pagina.",
+    "sessionExpired": "Je sessie is verlopen. Zoek je bestelling opnieuw op."
+  }
+}
