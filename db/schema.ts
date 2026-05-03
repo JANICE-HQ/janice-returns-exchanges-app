@@ -1,19 +1,34 @@
 /**
  * Drizzle ORM schema — JANICE Returns & Exchanges app
- * Tabellen: returns, return_items, return_state_history, wallet_transactions, idempotency_keys
- * Gegenereerd conform SHOPIFY-BUILD-PLAN.md § "Database schema (essentials)"
+ *
+ * PR #2 herschrijft dit schema conform de volledige PRD-specificatie:
+ *  - returns:               text PK (cuid2/ulid), shopify_order_name,
+ *                           customer_email, resolution, DHL-label velden,
+ *                           expires_at, total_refund_amount als numeric(10,2)
+ *  - return_items:          product_title, variant_title, sku, unit_price
+ *                           als numeric(10,2), reason_code, condition,
+ *                           exchange_for_variant_id
+ *  - return_state_history:  metadata (jsonb)
+ *  - wallet_transactions:   amount als numeric(10,2), balance_after, return_id
+ *  - idempotency_keys:      endpoint, response_status, response_body (jsonb),
+ *                           expires_at
+ *
+ * Alle geldbedragen worden opgeslagen als numeric(10,2) in EUR.
+ * Alle tijdstempels worden opgeslagen als timestamptz.
+ * Primaire sleutels zijn text (cuid2/ulid) — geen uuid's.
  */
 
 import {
-  boolean,
+  check,
   index,
   integer,
+  jsonb,
   numeric,
   pgTable,
   text,
   timestamp,
-  uuid,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
 // Tabel: returns
@@ -22,59 +37,51 @@ import {
 export const returns = pgTable(
   "returns",
   {
-    id: uuid("id").primaryKey(),
+    /** cuid2 of ulid als primaire sleutel (text, niet uuid) */
+    id: text("id").primaryKey(),
 
-    /** Mirrors Shopify Returns API ID — uniek per retour */
-    shopifyReturnId: text("shopify_return_id").unique(),
-
+    /** Shopify GID: "gid://shopify/Order/12345" */
     shopifyOrderId: text("shopify_order_id").notNull(),
 
-    /** Nullable voor gastretour */
-    shopifyCustomerId: text("shopify_customer_id"),
+    /** Mensleesbaar bestelnummer: bijv. "#1042" */
+    shopifyOrderName: text("shopify_order_name").notNull(),
 
-    /** Ingevuld bij gastretour */
-    guestEmail: text("guest_email"),
+    /** Nullable voor gastretour (enkel e-mail beschikbaar) */
+    customerId: text("customer_id"),
+
+    /** E-mailadres van de klant — altijd aanwezig */
+    customerEmail: text("customer_email").notNull(),
 
     /**
-     * 11-staps state machine:
-     * return_requested → return_in_transit → return_received →
-     * return_approved | return_partially_approved | return_rejected →
-     * refund_initiated | wallet_credited | exchange_shipped →
-     * return_completed
-     * Annulering: → return_cancelled (elk niet-terminal stadium)
+     * 11-staps state machine (zie app/services/return-state-machine.ts):
+     * DRAFT | SUBMITTED | APPROVED | REJECTED | LABEL_ISSUED |
+     * IN_TRANSIT | RECEIVED | INSPECTING | COMPLETED | CANCELLED | EXPIRED
      */
     state: text("state").notNull(),
 
-    /** 'refund' | 'wallet_credit' | 'exchange' */
-    resolutionType: text("resolution_type"),
+    /**
+     * Gekozen afhandeling: 'refund' | 'exchange' | 'store_credit'
+     * Null totdat klant of ops een keuze maakt.
+     */
+    resolution: text("resolution"),
 
-    reasonCode: text("reason_code").notNull(),
-
-    /** 'qr_label' | 'pdf_label' | 'in_store' */
-    returnMethod: text("return_method"),
-
-    /** DHL trackingcode teruggegeven vanuit de DHL Returns API */
-    dhlReturnTracking: text("dhl_return_tracking"),
-
-    /** 'qr_printless' | 'pdf' */
-    dhlLabelType: text("dhl_label_type"),
-
-    /** Tijdstip van fysieke ontvangst bij GoedGepickt-magazijn */
-    goedgepicktReceivedAt: timestamp("goedgepickt_received_at", {
-      withTimezone: true,
+    /** Totaal terug te betalen bedrag in EUR als numeric — geen floating point */
+    totalRefundAmount: numeric("total_refund_amount", {
+      precision: 10,
+      scale: 2,
     }),
 
-    /** €3,95 standaard, 0 voor kwaliteits-/beschadigingskwesties */
-    returnFeeCents: integer("return_fee_cents").default(395),
+    /** Valuta — V1 ondersteunt uitsluitend EUR */
+    totalRefundCurrency: text("total_refund_currency").default("EUR"),
 
-    totalRefundCents: integer("total_refund_cents"),
-    totalWalletCreditCents: integer("total_wallet_credit_cents"),
+    /** DHL retourlabel PDF- of QR-URL */
+    dhlLabelUrl: text("dhl_label_url"),
 
-    opsNotes: text("ops_notes"),
-    rejectionReason: text("rejection_reason"),
+    /** DHL trackingcode voor klantcommunicatie */
+    dhlTrackingNumber: text("dhl_tracking_number"),
 
-    /** Array van foto-URL's (Shopify Files) — optioneel voor kwaliteitsissues */
-    photoUrls: text("photo_urls").array(),
+    /** 'dhl_qr' | 'dhl_label' | 'in_store' */
+    returnMethod: text("return_method"),
 
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -83,11 +90,14 @@ export const returns = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
+
+    /** Vervaldatum van het DHL-retourlabel */
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
   },
   (table) => [
+    index("returns_order_id_idx").on(table.shopifyOrderId),
+    index("returns_customer_id_idx").on(table.customerId),
     index("returns_state_idx").on(table.state),
-    index("returns_customer_idx").on(table.shopifyCustomerId),
-    index("returns_order_idx").on(table.shopifyOrderId),
   ],
 );
 
@@ -95,121 +105,209 @@ export const returns = pgTable(
 // Tabel: return_items
 // Één rij per retourproduct (line-item niveau).
 // ---------------------------------------------------------------------------
-export const returnItems = pgTable("return_items", {
-  id: uuid("id").primaryKey(),
-
-  returnId: uuid("return_id")
-    .references(() => returns.id, { onDelete: "cascade" })
-    .notNull(),
-
-  shopifyLineItemId: text("shopify_line_item_id").notNull(),
-  variantId: text("variant_id").notNull(),
-  quantity: integer("quantity").notNull(),
-
-  unitPriceCents: integer("unit_price_cents").notNull(),
-
-  /** Nodig voor de 60%-korting-berekening */
-  compareAtPriceCents: integer("compare_at_price_cents"),
-
-  /** Berekend: (compare_at - unit_price) / compare_at — maximaal 2 decimalen */
-  discountPercentage: numeric("discount_percentage", { precision: 5, scale: 2 }),
-
-  /** Nullable — ingevuld bij ruiling */
-  exchangeVariantId: text("exchange_variant_id"),
-
-  /** 'refund' | 'wallet_credit' | 'exchange' */
-  resolution: text("resolution"),
-
-  /** Nullable tot ops-beslissing */
-  approved: boolean("approved"),
-
-  rejectionReason: text("rejection_reason"),
-});
-
-// ---------------------------------------------------------------------------
-// Tabel: return_state_history
-// Append-only auditlog van alle state-overgangen.
-// ---------------------------------------------------------------------------
-export const returnStateHistory = pgTable("return_state_history", {
-  id: uuid("id").primaryKey(),
-
-  returnId: uuid("return_id")
-    .references(() => returns.id, { onDelete: "cascade" })
-    .notNull(),
-
-  fromState: text("from_state"),
-  toState: text("to_state").notNull(),
-
-  /** 'customer' | 'system' | 'ops' | 'webhook' */
-  actorType: text("actor_type").notNull(),
-
-  /** Klant-ID, medewerker-ID, of naam van webhook-bron */
-  actorId: text("actor_id"),
-
-  notes: text("notes"),
-
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
-
-// ---------------------------------------------------------------------------
-// Tabel: wallet_transactions
-// Append-only creditledger — nooit verwijderen of bijwerken.
-// Positief = tegoed, negatief = afschrijving.
-// ---------------------------------------------------------------------------
-export const walletTransactions = pgTable(
-  "wallet_transactions",
+export const returnItems = pgTable(
+  "return_items",
   {
-    id: uuid("id").primaryKey(),
+    /** cuid2 of ulid als primaire sleutel */
+    id: text("id").primaryKey(),
 
-    shopifyCustomerId: text("shopify_customer_id").notNull(),
+    returnId: text("return_id")
+      .notNull()
+      .references(() => returns.id, { onDelete: "cascade" }),
 
-    /** Positief = tegoed, negatief = afschrijving (in eurocenten) */
-    amountCents: integer("amount_cents").notNull(),
+    /** Shopify GID: "gid://shopify/LineItem/..." */
+    shopifyLineItemId: text("shopify_line_item_id").notNull(),
+
+    /** Shopify GID van de variant */
+    shopifyVariantId: text("shopify_variant_id").notNull(),
+
+    /** Productnaam zoals weergegeven aan de klant */
+    productTitle: text("product_title").notNull(),
+
+    /** Variantnaam, bijv. "Camel / M" */
+    variantTitle: text("variant_title"),
+
+    /** Artikelcode (SKU) */
+    sku: text("sku"),
+
+    /** Aantal retourartikelen — minimaal 1 (afgedwongen via CHECK-constraint) */
+    quantity: integer("quantity").notNull(),
+
+    /** Werkelijk betaalde prijs per stuk (na kortingen), in EUR */
+    unitPrice: numeric("unit_price", { precision: 10, scale: 2 }).notNull(),
+
+    /** Oorspronkelijke adviesprijs — null als er geen korting gold */
+    unitCompareAtPrice: numeric("unit_compare_at_price", {
+      precision: 10,
+      scale: 2,
+    }),
 
     /**
-     * 'return_credit' | 'purchase_debit' | 'manual_credit' | 'pos_debit'
+     * Berekende korting in procenten:
+     * (compare_at_price - unit_price) / compare_at_price * 100
+     * Null als compare_at_price ontbreekt.
      */
-    reason: text("reason").notNull(),
+    discountPercentage: numeric("discount_percentage", {
+      precision: 5,
+      scale: 2,
+    }),
 
-    /** return_id of order_id als referentie */
-    referenceId: text("reference_id"),
+    /**
+     * Retourredencode (zie app/services/reason-codes.ts):
+     * TOO_BIG | TOO_SMALL | COLOR_DIFFERENT | DAMAGED | LATE_DELIVERY |
+     * WRONG_ITEM | NOT_AS_DESCRIBED | CHANGED_MIND
+     */
+    reasonCode: text("reason_code").notNull(),
 
-    /** Shopify Store Credit Transaction ID indien gespiegeld naar Shopify native */
-    shopifyStoreCreditTransactionId: text(
-      "shopify_store_credit_transaction_id",
-    ),
+    /** Vrije toelichting van de klant bij de redencode */
+    reasonSubnote: text("reason_subnote"),
+
+    /** 'as_new' | 'worn' | 'damaged' — null totdat ops-beoordeling plaatsvindt */
+    condition: text("condition"),
+
+    /** Shopify variant GID voor ruilartikel — alleen bij resolution=exchange */
+    exchangeForVariantId: text("exchange_for_variant_id"),
 
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
   },
   (table) => [
-    index("wallet_customer_idx").on(table.shopifyCustomerId),
+    check("return_items_quantity_positive", sql`${table.quantity} > 0`),
+    index("return_items_return_id_idx").on(table.returnId),
+    index("return_items_line_item_id_idx").on(table.shopifyLineItemId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Tabel: return_state_history
+// Append-only auditlog van alle state-overgangen.
+// ---------------------------------------------------------------------------
+export const returnStateHistory = pgTable(
+  "return_state_history",
+  {
+    id: text("id").primaryKey(),
+
+    returnId: text("return_id")
+      .notNull()
+      .references(() => returns.id, { onDelete: "cascade" }),
+
+    /** Null bij de allereerste transitie (initiëren van de state) */
+    fromState: text("from_state"),
+
+    toState: text("to_state").notNull(),
+
+    /** 'customer' | 'system' | 'ops_user' */
+    actorType: text("actor_type").notNull(),
+
+    /** Shopify customer_id of medewerker-ID */
+    actorId: text("actor_id"),
+
+    /** Optionele toelichting bij de transitie */
+    note: text("note"),
+
+    /**
+     * Vrije JSON-payload — bijv. carrier-event payload van DHL-webhook.
+     * Handig voor debugging en een volledige audit-trail.
+     */
+    metadata: jsonb("metadata"),
+
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("state_history_return_created_idx").on(
+      table.returnId,
+      table.createdAt,
+    ),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Tabel: wallet_transactions
+// Append-only creditledger — nooit verwijderen of bijwerken.
+// Positief = tegoed bijgeschreven, negatief = tegoed besteed.
+// ---------------------------------------------------------------------------
+export const walletTransactions = pgTable(
+  "wallet_transactions",
+  {
+    id: text("id").primaryKey(),
+
+    /** Nullable — niet elke transactie is direct gekoppeld aan een retour */
+    returnId: text("return_id"),
+
+    customerId: text("customer_id").notNull(),
+
+    /**
+     * Positief = tegoed bijgeschreven, negatief = besteed.
+     * Opgeslagen als numeric(10,2) in EUR — géén eurocenten.
+     */
+    amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
+
+    /** Valuta — V1 uitsluitend EUR */
+    currency: text("currency").notNull().default("EUR"),
+
+    /** Gespiegelde Shopify Store Credit Account Transaction ID */
+    shopifyStoreCreditAccountTransactionId: text(
+      "shopify_store_credit_account_transaction_id",
+    ),
+
+    /** 'return_refund' | 'compensation' | 'promo' | 'spent' */
+    reason: text("reason").notNull(),
+
+    /**
+     * Balansmomentopname na deze transactie — voor auditing.
+     * Nooit wijzigen na insert.
+     */
+    balanceAfter: numeric("balance_after", {
+      precision: 10,
+      scale: 2,
+    }).notNull(),
+
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("wallet_customer_id_idx").on(table.customerId),
+    index("wallet_return_id_idx").on(table.returnId),
   ],
 );
 
 // ---------------------------------------------------------------------------
 // Tabel: idempotency_keys
-// Voorkomt dubbele verwerking van Shopify-webhooks, GoedGepickt-webhooks, etc.
+// Voorkomt dubbele verwerking van identieke verzoeken binnen 24 uur.
 // ---------------------------------------------------------------------------
-export const idempotencyKeys = pgTable("idempotency_keys", {
-  key: text("key").primaryKey(),
+export const idempotencyKeys = pgTable(
+  "idempotency_keys",
+  {
+    /** Client-supplied UUID als primaire sleutel */
+    key: text("key").primaryKey(),
 
-  /** Bijv. 'shopify_webhook', 'goedgepickt_webhook' */
-  scope: text("scope").notNull(),
+    /** Bijv. 'POST /apps/returns/submit' */
+    endpoint: text("endpoint").notNull(),
 
-  /** Hash van het verwerkte resultaat voor debugdoeleinden */
-  resultHash: text("result_hash"),
+    /** HTTP-statuscode van het gecachte antwoord */
+    responseStatus: integer("response_status").notNull(),
 
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
+    /** Volledig gecachet antwoord als JSON-object */
+    responseBody: jsonb("response_body").notNull(),
+
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+
+    /** 24 uur na aanmaak — voor opruiming via cron-job */
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    index("idempotency_expires_at_idx").on(table.expiresAt),
+  ],
+);
 
 // ---------------------------------------------------------------------------
-// Type-exports voor gebruik in loaders, actions en service-laag
+// Type-exports — gebruik in loaders, actions en service-laag
 // ---------------------------------------------------------------------------
 export type Return = typeof returns.$inferSelect;
 export type NewReturn = typeof returns.$inferInsert;

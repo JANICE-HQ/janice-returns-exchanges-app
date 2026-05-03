@@ -50,10 +50,14 @@ export default defineConfig({
         lines: 80,
       },
       // Bestanden die meegerekend worden in coverage
-      include: ["app/**/*.ts", "app/**/*.tsx", "db/**/*.ts"],
+      // PR #2: Alleen de nieuwe service-laag bestanden meten.
+      // PR #1-bestanden (lib/*, routes/*, root.tsx) hebben eigen tests of
+      // worden in latere PR's gedekt.
+      include: [
+        "app/services/**/*.ts",
+        "db/schema.ts",
+      ],
       exclude: [
-        "app/routes/_dev.*",   // Dev-only routes tellen niet mee
-        "app/entry.server.tsx",
         "**/*.test.*",
         "**/*.d.ts",
         "**/+types/**",

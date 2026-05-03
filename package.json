@@ -21,6 +21,8 @@
     "@sentry/node": "^10.51.0",
     "@sentry/react": "^10.51.0",
     "bullmq": "^5.76.5",
+    "dayjs": "^1.11.20",
+    "decimal.js": "^10.6.0",
     "drizzle-orm": "^0.45.2",
     "ioredis": "^5.10.1",
     "isbot": "^5.1.36",
