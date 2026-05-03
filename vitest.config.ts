@@ -56,6 +56,7 @@ export default defineConfig({
       // PR #3: App Proxy eindpunten, middleware en helpers worden gemeten.
       // PR #2-bestanden (services/*) zijn al gedekt in eerdere PR.
       // Track A UI: components, i18n, UI routes.
+      // PR #4 (Track A): DHL, Klaviyo, Store Credit, Orchestrator, BullMQ-jobs
       include: [
         "app/services/**/*.ts",
         "app/lib/app-proxy-hmac.server.ts",
@@ -65,6 +66,10 @@ export default defineConfig({
         "app/lib/request-schemas.ts",
         "app/lib/shopify-queries.server.ts",
         "app/lib/structured-logger.server.ts",
+        "app/lib/dhl/**/*.ts",
+        "app/lib/klaviyo/**/*.ts",
+        "app/lib/shopify/**/*.ts",
+        "app/lib/queues/**/*.ts",
         "app/routes/apps.returns.start.ts",
         "app/routes/apps.returns.guest-lookup.ts",
         "app/routes/apps.returns.submit.ts",

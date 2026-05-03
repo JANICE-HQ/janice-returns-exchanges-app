@@ -87,7 +87,13 @@ vi.mock("../../db/schema.js", () => ({
 // Sentry stub — geen echte Sentry-aanroepen in tests
 vi.mock("@sentry/node", () => ({
   startSpan: vi.fn((_opts: unknown, fn: () => Promise<unknown>) => fn()),
+  captureException: vi.fn(),
   init: vi.fn(),
+}));
+
+// Orchestrator stub — voorkomt dat env.server.ts wordt geladen tijdens tests
+vi.mock("./return-orchestrator.js", () => ({
+  onStateTransition: vi.fn().mockResolvedValue(undefined),
 }));
 
 // ---------------------------------------------------------------------------

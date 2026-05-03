@@ -31,6 +31,7 @@ import type { ShopifyLineItemUitgebreid, ShopifyOrderUitgebreid } from "~/lib/sh
 import { checkEligibility } from "~/services/eligibility";
 import { computeLineRefund } from "~/services/refund-calculator";
 import { logVerzoek, logFout, startTimer, stopTimer } from "~/lib/structured-logger.server";
+import { trackEvent } from "~/lib/klaviyo/events.server";
 import Decimal from "decimal.js";
 
 const ENDPOINT = "POST /apps/returns/start";
@@ -216,6 +217,29 @@ export async function action({ request }: ActionFunctionArgs) {
                 createdAt: nu,
               });
             });
+
+            // Klaviyo Return_Started event na succesvolle DRAFT-aanmaak
+            try {
+              await trackEvent({
+                eventName: "Return_Started",
+                customerEmail: bestelling.customerEmail,
+                customerId,
+                properties: {
+                  return_id: retourId,
+                  order_name: bestelling.name,
+                  total_refund_amount: totaalRefund,
+                  currency: "EUR",
+                  resolution: null,
+                  state: "DRAFT",
+                  reason_codes: invoer.lineItems.map((l) => l.reasonCode),
+                },
+                uniqueId: `${retourId}:Return_Started`,
+              });
+            } catch (klaviyoFout) {
+              // Klaviyo-fouten mogen het retourproces NOOIT blokkeren
+              logFout(klaviyoFout, { method: "POST", path: "/apps/returns/start", actorId: customerId, returnId: retourId });
+              Sentry.captureException(klaviyoFout, { tags: { "return.id": retourId, "klaviyo.event": "Return_Started" } });
+            }
 
             return {
               status: 201,
