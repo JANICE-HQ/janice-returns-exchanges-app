@@ -1,7 +1,18 @@
 .DS_Store
+
+# Omgevingsvariabelen — nooit committen
 .env
+.env.local
+.env.*.local
+
 /node_modules/
 
 # React Router
 /.react-router/
 /build/
+
+# Drizzle Kit
+/drizzle/
+
+# Vitest
+/coverage/
