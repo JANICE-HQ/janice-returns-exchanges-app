@@ -36,6 +36,7 @@ import { getAutoRouting } from "~/services/reason-codes";
 import type { ReasonCode } from "~/services/reason-codes";
 import { transition, InvalidTransitionError } from "~/services/return-state-machine";
 import { logVerzoek, logFout, startTimer, stopTimer } from "~/lib/structured-logger.server";
+import { trackEvent } from "~/lib/klaviyo/events.server";
 import Decimal from "decimal.js";
 
 const ENDPOINT = "POST /apps/returns/submit";
@@ -317,19 +318,28 @@ export async function action({ request }: ActionFunctionArgs) {
               vereistOpsReview ? { requiresOpsReview: true } : undefined,
             );
 
-            // Stap 8: Klaviyo-event stub
-            // TODO (PR #44 — Track A): Klaviyo event 'return_submitted' triggeren
-            console.log("[STUB] Klaviyo event:", JSON.stringify({
-              event: "return_submitted",
-              payload: {
-                returnId: retourId,
+            // Stap 8: Klaviyo Return_Submitted event
+            try {
+              await trackEvent({
+                eventName: "Return_Submitted",
                 customerEmail,
-                resolution: invoer.resolution,
-                totalRefundAmount: totaalRefundBedrag,
-                requiresOpsReview: vereistOpsReview,
-                lineItemCount: invoer.lineItems.length,
-              },
-            }));
+                properties: {
+                  return_id: retourId,
+                  order_name: "", // wordt geladen vanuit DB als needed
+                  total_refund_amount: totaalRefundBedrag,
+                  currency: "EUR",
+                  resolution: invoer.resolution,
+                  state: "SUBMITTED",
+                  reason_codes: invoer.lineItems.map((l) => l.reasonCode),
+                  requires_ops_review: vereistOpsReview,
+                },
+                uniqueId: `${retourId}:Return_Submitted`,
+              });
+            } catch (klaviyoFout) {
+              // Klaviyo-fouten mogen het retourproces NOOIT blokkeren
+              logFout(klaviyoFout, { method: "POST", path: "/apps/returns/submit", actorId, returnId: retourId });
+              Sentry.captureException(klaviyoFout, { tags: { "return.id": retourId, "klaviyo.event": "Return_Submitted" } });
+            }
 
             return {
               status: 200,

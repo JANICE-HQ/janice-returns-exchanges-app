@@ -193,7 +193,8 @@ export async function transition(
       },
     },
     async () => {
-      return await db.transaction(async (tx) => {
+      // DB-transactie voor atomaire state-update + history
+      const { bijgewerktRetour, huidigeState } = await db.transaction(async (tx) => {
         // 1. Laad huidig retourverzoek
         const [huidigRetour] = await tx
           .select()
@@ -243,7 +244,7 @@ export async function transition(
           createdAt: nu,
         });
 
-        // 5. Emit downstream event (stub — PR #4 implementeert echte integraties)
+        // 5. Emit downstream event (legacy stub — volledig vervangen door orchestrator in stap 6)
         emitStateChangedEvent({
           returnId: invoer.returnId,
           fromState: huidigeState,
@@ -252,8 +253,38 @@ export async function transition(
           timestamp: nu,
         });
 
-        return bijgewerktRetour;
+        return { bijgewerktRetour, huidigeState };
       });
+
+      // 6. Orchestrator aanroepen BUITEN de DB-transactie (PR #4 side-effects)
+      // Dynamische import voorkomt circulaire afhankelijkheden en env-laad-problemen bij tests.
+      // Omsloten door try/catch — side-effects mogen de transitie NOOIT doen mislukken.
+      try {
+        const { onStateTransition } = await import("./return-orchestrator.js");
+        await onStateTransition(
+          invoer.returnId,
+          huidigeState,
+          invoer.to,
+          {
+            customerEmail: bijgewerktRetour.customerEmail,
+            customerId: bijgewerktRetour.customerId ?? null,
+            orderName: bijgewerktRetour.shopifyOrderName,
+            totalRefundAmount: bijgewerktRetour.totalRefundAmount ?? null,
+            resolution: bijgewerktRetour.resolution ?? null,
+            trackingNumber: bijgewerktRetour.dhlTrackingNumber ?? null,
+          },
+        );
+      } catch (orchestratorFout) {
+        Sentry.captureException(orchestratorFout, {
+          tags: {
+            "return.id": invoer.returnId,
+            "transition.to": invoer.to,
+            "source": "state_machine_orchestrator_hook",
+          },
+        });
+      }
+
+      return bijgewerktRetour;
     },
   );
 }
