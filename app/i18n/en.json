@@ -1,0 +1,166 @@
+{
+  "portal": {
+    "skipToContent": "Skip to content",
+    "title": "Return or exchange",
+    "subtitle": "You can return products within 30 days of receipt. Returns within the EU are free.",
+    "loginCta": "Log in to view my order",
+    "guestCta": "Look up order as guest"
+  },
+  "guest": {
+    "title": "Look up your order",
+    "subtitle": "Enter your order number and email address to find your order.",
+    "orderNumberLabel": "Order number",
+    "orderNumberPlaceholder": "#1042",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "your@email.com",
+    "submitButton": "Find order",
+    "notFoundMessage": "No order found. Please check your details.",
+    "rateLimitMessage": "Too many attempts. Please try again in {minutes} minutes.",
+    "rateLimitCountdown": "Please try again in {seconds} seconds.",
+    "errorGeneral": "Something went wrong. Please try again."
+  },
+  "steps": {
+    "1": "Items",
+    "2": "Reason",
+    "3": "Resolution",
+    "4": "Shipping",
+    "5": "Confirm"
+  },
+  "items": {
+    "title": "Which items do you want to return?",
+    "subtitle": "Select the items you want to return and specify the quantity.",
+    "orderLabel": "Order",
+    "dateLabel": "Order date",
+    "totalLabel": "Total",
+    "qtyLabel": "Quantity",
+    "continueButton": "Continue",
+    "noItemsError": "Select at least one item to continue.",
+    "finalSaleBlocker": "Final sale. This item cannot be returned.",
+    "windowExpiredBlocker": "The 30-day return window for this item has expired.",
+    "alreadyReturnedBlocker": "This item has already been returned."
+  },
+  "reason": {
+    "title": "What is your reason for returning?",
+    "subtitle": "For each item, indicate why you want to return it.",
+    "selectPlaceholder": "Choose a reason",
+    "notePlaceholder": "Additional notes (optional)",
+    "noteLabel": "Additional notes (optional)",
+    "noteMaxChars": "Max. 500 characters",
+    "selectReasonError": "Please select a reason to continue.",
+    "continueButton": "Continue",
+    "codes": {
+      "TOO_BIG": "Too big",
+      "TOO_SMALL": "Too small",
+      "COLOR_DIFFERENT": "Colour different from photo",
+      "DAMAGED": "Received damaged",
+      "LATE_DELIVERY": "Delivered too late",
+      "WRONG_ITEM": "Wrong item received",
+      "NOT_AS_DESCRIBED": "Not as described",
+      "CHANGED_MIND": "Changed my mind"
+    }
+  },
+  "resolution": {
+    "title": "How would you like to resolve this?",
+    "subtitle": "Choose the resolution that works for you.",
+    "continueButton": "Continue",
+    "opsReviewTitle": "Our customer service will contact you",
+    "opsReviewText": "Due to the nature of your return, our customer service will review your request. You will hear from us within 2 business days.",
+    "refund": {
+      "title": "Refund",
+      "description": "Refunded to your original payment method.",
+      "timeline": "5-7 business days after receipt"
+    },
+    "exchange": {
+      "title": "Exchange",
+      "description": "Exchange the item for a different size or colour.",
+      "timeline": "Order placed directly after approval"
+    },
+    "store_credit": {
+      "title": "Store credit",
+      "description": "Receive 5% extra as store credit. Available immediately in your wallet.",
+      "timeline": "Available immediately, no waiting time",
+      "badge": "+5% bonus"
+    }
+  },
+  "method": {
+    "title": "How will you ship your package?",
+    "subtitle": "Choose your return method.",
+    "continueButton": "Continue",
+    "qr": {
+      "title": "DHL drop-off point. QR code",
+      "description": "Paperless. Scan the QR code at a DHL drop-off point. No printer needed.",
+      "badge": "Recommended"
+    },
+    "label": {
+      "title": "Print your own label",
+      "description": "We will send a PDF label to your email address. Print it out and attach it to the package."
+    }
+  },
+  "confirm": {
+    "title": "Review your return",
+    "subtitle": "Check the details before submitting your return.",
+    "itemsHeader": "Items",
+    "resolutionHeader": "Resolution",
+    "methodHeader": "Shipping method",
+    "refundHeader": "Refund",
+    "termsLabel": "I agree to the",
+    "termsLink": "return policy",
+    "termsRequiredError": "Please accept the return policy to continue.",
+    "submitButton": "Confirm and submit",
+    "estimatedTimeline": "Label within 1 hour by email. Refund within 5-7 business days after receipt.",
+    "backButton": "Back"
+  },
+  "success": {
+    "title": "Return submitted",
+    "subtitle": "Your return request has been successfully submitted.",
+    "returnIdLabel": "Return reference",
+    "orderLabel": "Order",
+    "nextStepsTitle": "What happens next?",
+    "nextSteps": [
+      "You will receive a confirmation email at your email address.",
+      "Your label or QR code will be sent within 1 hour by email.",
+      "Pack the items securely in the original packaging.",
+      "Drop off the package at a DHL drop-off point or hand it to the courier.",
+      "We will process your return within 5 business days of receipt."
+    ],
+    "backToAccount": "Back to my account",
+    "backToStore": "Back to the store"
+  },
+  "status": {
+    "title": "Return status",
+    "subtitle": "View the current status and history of your return request.",
+    "returnIdLabel": "Return reference",
+    "currentStateLabel": "Current status",
+    "timelineTitle": "History",
+    "notFoundMessage": "Return not found.",
+    "states": {
+      "DRAFT": "Draft",
+      "SUBMITTED": "Submitted",
+      "APPROVED": "Approved",
+      "REJECTED": "Rejected",
+      "LABEL_ISSUED": "Label issued",
+      "IN_TRANSIT": "In transit",
+      "RECEIVED": "Received",
+      "INSPECTING": "Under review",
+      "COMPLETED": "Completed",
+      "CANCELLED": "Cancelled",
+      "EXPIRED": "Expired"
+    }
+  },
+  "trust": {
+    "title": "Why return with JANICE",
+    "signals": [
+      "30-day return window from the date of receipt.",
+      "Free returns within the EU.",
+      "Secure payment via Mollie. Refunded to your original payment method.",
+      "Personal customer service via email and chat.",
+      "Returned items are reused or recycled."
+    ]
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "notFound": "Not found.",
+    "unauthorized": "You do not have access to this page.",
+    "sessionExpired": "Your session has expired. Please look up your order again."
+  }
+}

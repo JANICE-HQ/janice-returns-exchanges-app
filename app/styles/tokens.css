@@ -1,0 +1,45 @@
+/**
+ * Design tokens — JANICE Returns Portal
+ *
+ * Definitieve kleur-, typografie- en ruimte-tokens conform JANICE Brand Rules.
+ * Gebruik ALTIJD deze custom properties; nooit raw hex-waarden in componenten.
+ */
+
+:root {
+  /* Kleurenpalet */
+  --color-onyx: #0A0A0A;
+  --color-off-white: #FEFEFE;
+  --color-warm-grey: #F5F2EE;
+  --color-mid-grey: #D4D0CB;
+  --color-slate: #8A8580;
+  --color-mist: #C8C4BF;
+  --color-blush: #E8E0D8;
+  --color-camel: #B8985E;
+
+  /* Spacing schaal */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* Typografie */
+  --font-body: 'Futura PT', system-ui, sans-serif;
+  --font-display: 'Chamberi Display', Georgia, serif;
+
+  /* Hoeken — altijd 0 (JANICE brand rule) */
+  --radius-sharp: 0;
+
+  /* Layout */
+  --container-max: 720px;
+
+  /* Border */
+  --border-default: 1px solid var(--color-mid-grey);
+  --border-subtle: 1px solid var(--color-mist);
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+}

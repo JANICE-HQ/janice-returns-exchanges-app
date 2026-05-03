@@ -17,8 +17,11 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   test: {
-    // Node-omgeving voor server-side tests (loaders, actions, services)
+    // Node-omgeving voor server-side tests; UI-tests overschrijven naar jsdom via @vitest/browser of per-file pragma
     environment: "node",
+    environmentOptions: {
+      // jsdom-opties voor component-tests (via /* @vitest-environment jsdom */ pragma)
+    },
 
     // Testbestanden inclusief patronen
     include: [
@@ -52,6 +55,7 @@ export default defineConfig({
       // Bestanden die meegerekend worden in coverage
       // PR #3: App Proxy eindpunten, middleware en helpers worden gemeten.
       // PR #2-bestanden (services/*) zijn al gedekt in eerdere PR.
+      // Track A UI: components, i18n, UI routes.
       include: [
         "app/services/**/*.ts",
         "app/lib/app-proxy-hmac.server.ts",
@@ -66,6 +70,19 @@ export default defineConfig({
         "app/routes/apps.returns.submit.ts",
         "app/routes/apps.returns.$id.status.ts",
         "db/schema.ts",
+        // Track A UI bestanden
+        "app/components/returns/**/*.tsx",
+        "app/components/returns/**/*.ts",
+        "app/i18n/**/*.ts",
+        "app/routes/apps.returns._index.tsx",
+        "app/routes/apps.returns.guest.tsx",
+        "app/routes/apps.returns.start.$orderId.tsx",
+        "app/routes/apps.returns.reason.$returnId.tsx",
+        "app/routes/apps.returns.resolution.$returnId.tsx",
+        "app/routes/apps.returns.method.$returnId.tsx",
+        "app/routes/apps.returns.confirm.$returnId.tsx",
+        "app/routes/apps.returns.success.$returnId.tsx",
+        "app/routes/apps.returns.status.$returnId.tsx",
       ],
       exclude: [
         "**/*.test.*",
@@ -73,6 +90,8 @@ export default defineConfig({
         "**/+types/**",
         "app/lib/__tests__/**",
         "app/routes/__tests__/**",
+        "app/components/__tests__/**",
+        "app/i18n/*.json",
       ],
     },
   },
