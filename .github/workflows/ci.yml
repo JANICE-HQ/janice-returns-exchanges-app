@@ -36,6 +36,11 @@ jobs:
 
       # -----------------------------------------------------------------------
       # 3. Exacte dependencies installeren (lockfile)
+      #
+      # NOTE: wanneer package-lock.json op macOS wordt geregenereerd, gebruik:
+      #   npm install --package-lock-only --os=linux --libc=glibc --cpu=x64
+      # Anders worden Linux-only optionele deps (@emnapi/core, @emnapi/runtime)
+      # weggelaten en faalt `npm ci` op deze Ubuntu-runner.
       # -----------------------------------------------------------------------
       - name: Installeer dependencies
         run: npm ci
