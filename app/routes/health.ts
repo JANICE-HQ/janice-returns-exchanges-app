@@ -20,6 +20,7 @@
  */
 
 import type { LoaderFunctionArgs } from "react-router";
+import { SHOPIFY_GRAPHQL_URL } from "~/lib/constants";
 
 type CheckStatus = "ok" | "fail" | "skipped";
 
@@ -168,7 +169,7 @@ async function controleerShopify(): Promise<CheckResultaat> {
   }
 
   try {
-    const url = `https://${domein}/admin/api/2025-01/graphql.json`;
+    const url = SHOPIFY_GRAPHQL_URL(domein);
     const antwoord = await fetch(url, {
       method: "POST",
       headers: {
