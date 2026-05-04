@@ -14,6 +14,7 @@
  */
 
 import { env } from "~/lib/env.server";
+import { SHOPIFY_GRAPHQL_URL } from "~/lib/constants";
 
 // ---------------------------------------------------------------------------
 // Typen
@@ -73,12 +74,6 @@ export class ShopifyHTTPFout extends Error {
 // ---------------------------------------------------------------------------
 
 /**
- * Shopify Admin API versie.
- * Bijwerken bij elke Shopify API-versie-upgrade (per kwartaal).
- */
-const SHOPIFY_API_VERSIE = "2025-01";
-
-/**
  * Maximum aantal seconden te wachten op een Shopify-respons.
  */
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -129,7 +124,7 @@ export async function shopifyAdmin<T>(
   query: string,
   variabelen?: Record<string, unknown>,
 ): Promise<T> {
-  const url = `https://${env.SHOPIFY_SHOP_DOMAIN}/admin/api/${SHOPIFY_API_VERSIE}/graphql.json`;
+  const url = SHOPIFY_GRAPHQL_URL(env.SHOPIFY_SHOP_DOMAIN);
 
   const lichaam = JSON.stringify({
     query,
@@ -191,5 +186,6 @@ export async function shopifyAdmin<T>(
 /**
  * Shopify API-versie die momenteel in gebruik is.
  * Handig voor logging en health checks.
+ * Re-export vanuit ~/lib/constants voor backwards-compatibiliteit.
  */
-export const shopifyApiVersie = SHOPIFY_API_VERSIE;
+export { SHOPIFY_API_VERSION as shopifyApiVersie } from "~/lib/constants";
