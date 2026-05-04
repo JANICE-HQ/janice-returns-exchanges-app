@@ -112,9 +112,6 @@ const HYGIENE_CATEGORIEEN: ReadonlySet<string> = new Set([
   "cosmetica",
 ]);
 
-/** Terminal states waarbinnen een dupicaatretour geblokkeerd wordt */
-const NIET_TERMINAL_STATES = ["DRAFT", "SUBMITTED", "APPROVED", "LABEL_ISSUED", "IN_TRANSIT", "RECEIVED", "INSPECTING"];
-
 // ---------------------------------------------------------------------------
 // Invoervalidatie
 // ---------------------------------------------------------------------------

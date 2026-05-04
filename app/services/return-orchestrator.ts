@@ -25,7 +25,7 @@ import * as Sentry from "@sentry/node";
 import { Decimal } from "decimal.js";
 import { eq } from "drizzle-orm";
 import { db } from "../../db/index.js";
-import { returns, returnItems } from "../../db/schema.js";
+import { returnItems } from "../../db/schema.js";
 import type { State } from "./return-state-machine.js";
 import { trackEvent } from "~/lib/klaviyo/events.server";
 import type { KlaviyoEventProperties } from "~/lib/klaviyo/events.server";
@@ -193,8 +193,8 @@ async function verwerkSideEffects(
     case "DRAFT":
     case "CANCELLED":
     case "INSPECTING":
-    case "IN_TRANSIT":
       // Geen side-effect voor DRAFT, CANCELLED, INSPECTING (enkel transitie-logging)
+      // Opmerking: IN_TRANSIT heeft een eigen case hierboven met Klaviyo Return_In_Transit
       break;
   }
 }

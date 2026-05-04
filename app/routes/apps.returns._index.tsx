@@ -13,8 +13,6 @@ import type { LoaderFunctionArgs, MetaFunction } from "react-router";
 import "~/styles/returns-portal.css";
 import { detectLocale, t, tArray } from "~/i18n";
 import type { Locale } from "~/i18n";
-import { StepProgress } from "~/components/returns/StepProgress";
-import { TrustSignals } from "~/components/returns/TrustSignals";
 
 export const meta: MetaFunction = () => [
   { title: "Retourneren of ruilen — JANICE" },
@@ -29,11 +27,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     locale,
     loggedInCustomerId,
   });
-}
-
-interface LoaderData {
-  locale: Locale;
-  loggedInCustomerId: string | null;
 }
 
 export default function ReturnsLanding() {

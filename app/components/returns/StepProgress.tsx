@@ -20,7 +20,7 @@ const STEP_KEYS = ["1", "2", "3", "4", "5"] as const;
 export function StepProgress({ currentStep, locale = "nl" }: StepProgressProps) {
   return (
     <nav aria-label={locale === "nl" ? "Stapvoortgang" : "Step progress"}>
-      <ol className="rp-step-progress" role="list">
+      <ol className="rp-step-progress">
         {STEP_KEYS.map((key, idx) => {
           const stepNum = idx + 1;
           const isCompleted = stepNum < currentStep;

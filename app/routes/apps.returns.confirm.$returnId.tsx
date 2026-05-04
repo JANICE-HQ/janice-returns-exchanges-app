@@ -21,7 +21,6 @@ import { StepProgress } from "~/components/returns/StepProgress";
 import { RefundSummary } from "~/components/returns/RefundSummary";
 import { Button } from "~/components/returns/Button";
 import type { Resolution, ReturnMethod, ReasonCode, ReturnItem } from "~/components/returns/types";
-import { formatPrice } from "~/components/returns/types";
 
 export const meta: MetaFunction = () => [
   { title: "Bevestigen — JANICE Retourportal" },
