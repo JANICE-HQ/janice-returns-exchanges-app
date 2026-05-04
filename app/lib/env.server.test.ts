@@ -2,10 +2,11 @@
  * Tests voor env.server.ts — JANICE Returns & Exchanges app
  *
  * Verifieert dat het Zod-schema:
- * 1. Een fout gooit bij ontbrekende variabelen
+ * 1. Een fout gooit bij ontbrekende vereiste variabelen
  * 2. Beschrijvende foutmeldingen geeft
  * 3. Geldig slaagt bij aanwezige variabelen
  * 4. NODE_ENV standaard op 'development' zet
+ * 5. SHOPIFY_ADMIN_TOKEN, SHOPIFY_API_KEY optioneel accepteert (legacy + nieuw pad)
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
@@ -19,11 +20,15 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
-  SHOPIFY_ADMIN_TOKEN: z.string().min(1),
+  // SHOPIFY_ADMIN_TOKEN is optioneel — terugvalpad voor legacy deployments
+  SHOPIFY_ADMIN_TOKEN: z.string().min(1).optional(),
   SHOPIFY_SHOP_DOMAIN: z
     .string()
     .min(1)
     .regex(/^[a-z0-9-]+\.myshopify\.com$/),
+  // SHOPIFY_API_KEY is optioneel — nieuw OAuth2 pad
+  SHOPIFY_API_KEY: z.string().min(1).optional(),
+  SHOPIFY_API_SECRET: z.string().min(1),
   APP_URL: z.string().url(),
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1),
@@ -41,6 +46,7 @@ const geldigeEnv: Record<string, string> = {
   NODE_ENV: "test",
   SHOPIFY_ADMIN_TOKEN: "shpat_testtoken123",
   SHOPIFY_SHOP_DOMAIN: "u17s8e-sc.myshopify.com",
+  SHOPIFY_API_SECRET: "test-api-secret",
   APP_URL: "https://returns.janice.com",
   DATABASE_URL: "postgresql://user:pass@localhost:5432/janice_returns",
   REDIS_URL: "redis://localhost:6379",
@@ -76,18 +82,37 @@ describe("env.server — Zod-schema validatie", () => {
   // Fout-scenario's — ontbrekende variabelen
   // ---------------------------------------------------------------------------
   describe("Schema gooit fout bij ongeldige configuratie", () => {
-    it("faalt als SHOPIFY_ADMIN_TOKEN ontbreekt", () => {
+    it("slaagt zonder SHOPIFY_ADMIN_TOKEN (optioneel — terugvalpad)", () => {
       const invoer = { ...geldigeEnv };
       delete invoer["SHOPIFY_ADMIN_TOKEN"];
 
       const resultaat = envSchema.safeParse(invoer);
 
-      expect(resultaat.success).toBe(false);
-      if (!resultaat.success) {
-        // Zod v4 gebruikt `issues` in plaats van `errors`
-        const paden = resultaat.error.issues.map((e) => e.path.join("."));
-        expect(paden).toContain("SHOPIFY_ADMIN_TOKEN");
-      }
+      // SHOPIFY_ADMIN_TOKEN is optioneel geworden — legacy deployments
+      // kunnen overstappen naar SHOPIFY_API_KEY + SHOPIFY_API_SECRET
+      expect(resultaat.success).toBe(true);
+    });
+
+    it("slaagt zonder SHOPIFY_API_KEY (optioneel — legacy pad via SHOPIFY_ADMIN_TOKEN)", () => {
+      const invoer = { ...geldigeEnv };
+      delete invoer["SHOPIFY_API_KEY"];
+
+      const resultaat = envSchema.safeParse(invoer);
+
+      expect(resultaat.success).toBe(true);
+    });
+
+    it("slaagt met zowel SHOPIFY_ADMIN_TOKEN als SHOPIFY_API_KEY + SHOPIFY_API_SECRET", () => {
+      const invoer = {
+        ...geldigeEnv,
+        SHOPIFY_API_KEY: "test-api-key-12345",
+        SHOPIFY_API_SECRET: "test-api-secret-67890",
+        SHOPIFY_ADMIN_TOKEN: "shpat_testtoken123",
+      };
+
+      const resultaat = envSchema.safeParse(invoer);
+
+      expect(resultaat.success).toBe(true);
     });
 
     it("faalt als DATABASE_URL ontbreekt", () => {
@@ -252,9 +277,10 @@ describe("env.server — Zod-schema validatie", () => {
           .map((e) => e.path.join("."))
           .join(", ");
 
-        // Controleer of bekende vereiste velden genoemd worden
-        expect(allePaden).toContain("SHOPIFY_ADMIN_TOKEN");
+        // Controleer of bekende vereiste velden genannt worden
+        // (SHOPIFY_ADMIN_TOKEN en SHOPIFY_API_KEY zijn optioneel geworden)
         expect(allePaden).toContain("DATABASE_URL");
+        expect(allePaden).toContain("SHOPIFY_SHOP_DOMAIN");
       }
     });
   });

@@ -10,11 +10,21 @@
  *   RUN_WORKERS=true  — start workers in hetzelfde proces (V1)
  *   RUN_WORKERS=false — workers worden niet gestart (standaard)
  *
+ * Workers:
+ *   - issue-label: DHL-retourlabels aanmaken na goedkeuring
+ *   - refresh-shopify-token: Shopify Admin token proactief vernieuwen (elke 4u)
+ *
  * Graceful shutdown:
  *   SIGTERM-handler wacht tot lopende jobs klaar zijn voordat het proces stopt.
  */
 
 import { startIssueLabelWorker } from "./issue-label-job.js";
+import {
+  startRefreshShopifyTokenWorker,
+  planRefreshShopifyTokenJob,
+  haalRefreshQueue,
+  REFRESH_INTERVAL_MS,
+} from "./refresh-shopify-token-job.js";
 
 let workersGestart = false;
 
@@ -50,6 +60,7 @@ export function bootstrapWorkers(): void {
 
   try {
     const issueLabelWorker = startIssueLabelWorker();
+    const refreshTokenWorker = startRefreshShopifyTokenWorker();
 
     workersGestart = true;
 
@@ -58,9 +69,34 @@ export function bootstrapWorkers(): void {
         level: "INFO",
         ts: new Date().toISOString(),
         event: "workers_started",
-        workers: ["issue-label"],
+        workers: ["issue-label", "refresh-shopify-token"],
       }) + "\n",
     );
+
+    // Plan de herhaaltaak voor Shopify token-vernieuwing
+    const refreshQueue = haalRefreshQueue();
+    void planRefreshShopifyTokenJob(refreshQueue).then(() => {
+      process.stdout.write(
+        JSON.stringify({
+          level: "INFO",
+          ts: new Date().toISOString(),
+          event: "shopify_token_refresh_scheduled",
+          interval_ms: REFRESH_INTERVAL_MS,
+          next_run: new Date(Date.now() + REFRESH_INTERVAL_MS).toISOString(),
+          message: `Shopify token-vernieuwing ingepland — interval: ${REFRESH_INTERVAL_MS / 1000 / 60 / 60}u`,
+        }) + "\n",
+      );
+    }).catch((fout: unknown) => {
+      process.stderr.write(
+        JSON.stringify({
+          level: "ERROR",
+          ts: new Date().toISOString(),
+          event: "shopify_token_refresh_plan_fout",
+          error: fout instanceof Error ? fout.message : String(fout),
+          message: "Kon Shopify token-vernieuwing niet inplannen",
+        }) + "\n",
+      );
+    });
 
     // Graceful shutdown: wacht op lopende jobs
     const gracefulShutdown = async (signaal: string) => {
@@ -75,7 +111,10 @@ export function bootstrapWorkers(): void {
       );
 
       try {
-        await issueLabelWorker.close();
+        await Promise.all([
+          issueLabelWorker.close(),
+          refreshTokenWorker.close(),
+        ]);
 
         process.stdout.write(
           JSON.stringify({

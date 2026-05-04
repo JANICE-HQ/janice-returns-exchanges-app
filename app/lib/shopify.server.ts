@@ -4,6 +4,11 @@
  * Minimale GraphQL-client gebouwd op de ingebouwde fetch (Node 18+).
  * Geen externe Shopify-libraries — bewust om afhankelijkheden minimaal te houden.
  *
+ * Token-beheer:
+ *   Tokens worden opgehaald via shopify-token-manager.server.ts die automatisch
+ *   vernieuwt vóór verlopen (OAuth2 client_credentials, 24u geldigheid).
+ *   Bij een 401-respons wordt het token geïnvalideerd en één keer opnieuw geprobeerd.
+ *
  * Gebruik:
  *   import { shopifyAdmin } from "~/lib/shopify.server";
  *
@@ -15,6 +20,11 @@
 
 import { env } from "~/lib/env.server";
 import { SHOPIFY_GRAPHQL_URL } from "~/lib/constants";
+import {
+  getShopifyAdminToken,
+  invalidateShopifyAdminToken,
+  ShopifyAuthFout,
+} from "~/lib/shopify-token-manager.server";
 
 // ---------------------------------------------------------------------------
 // Typen
@@ -69,14 +79,44 @@ export class ShopifyHTTPFout extends Error {
   }
 }
 
+// Re-exporteer ShopifyAuthFout zodat callers het kunnen opvangen
+export { ShopifyAuthFout };
+
 // ---------------------------------------------------------------------------
 // Configuratie
 // ---------------------------------------------------------------------------
 
 /**
- * Maximum aantal seconden te wachten op een Shopify-respons.
+ * Maximum aantal milliseconden te wachten op een Shopify-respons.
  */
 const REQUEST_TIMEOUT_MS = 15_000;
+
+// ---------------------------------------------------------------------------
+// Interne fetch-helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Voer één HTTP-verzoek uit naar de Shopify Admin GraphQL API.
+ * Retourneert de ruwe Response (statuscontrole vindt plaats in de hoofd-client).
+ */
+async function _voerFetchUit(
+  token: string,
+  lichaam: string,
+): Promise<Response> {
+  const url = SHOPIFY_GRAPHQL_URL(env.SHOPIFY_SHOP_DOMAIN);
+
+  return fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Shopify-Access-Token": token,
+      // Correlatie-ID voor tracing in Sentry en logs
+      "X-Request-ID": crypto.randomUUID(),
+    },
+    body: lichaam,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Hoofd-client
@@ -85,11 +125,17 @@ const REQUEST_TIMEOUT_MS = 15_000;
 /**
  * Voer een Shopify Admin GraphQL-query of -mutatie uit.
  *
- * @param query   - GraphQL-query of mutatie (string)
+ * Token-beheer:
+ *   - Token wordt opgehaald via de token manager (automatische vernieuwing)
+ *   - Bij een 401-respons: token geïnvalideerd, één herpoging met vers token
+ *   - Na twee opeenvolgende 401's: ShopifyAuthFout gegooid
+ *
+ * @param query      - GraphQL-query of mutatie (string)
  * @param variabelen - Optionele variabelen voor de query
  * @returns Getypeerde `data` uit het Shopify-antwoord
  * @throws ShopifyGraphQLFout — bij GraphQL-fouten in het antwoord
- * @throws ShopifyHTTPFout   — bij niet-2xx HTTP-statuscodes
+ * @throws ShopifyHTTPFout   — bij niet-2xx HTTP-statuscodes (excl. 401)
+ * @throws ShopifyAuthFout   — bij aanhoudende 401 na token-vernieuwing
  * @throws Error             — bij netwerk-/timeout-fouten
  *
  * @example Eenvoudige query
@@ -124,29 +170,25 @@ export async function shopifyAdmin<T>(
   query: string,
   variabelen?: Record<string, unknown>,
 ): Promise<T> {
-  const url = SHOPIFY_GRAPHQL_URL(env.SHOPIFY_SHOP_DOMAIN);
-
   const lichaam = JSON.stringify({
     query,
     ...(variabelen ? { variables: variabelen } : {}),
   });
 
-  let antwoord: Response;
-
+  // --- Haal token op via token manager (met automatische vernieuwing) ---
+  let token: string;
   try {
-    antwoord = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Shopify-Access-Token": env.SHOPIFY_ADMIN_TOKEN,
-        // Correlatie-ID voor tracing in Sentry en logs
-        "X-Request-ID": crypto.randomUUID(),
-      },
-      body: lichaam,
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
+    token = await getShopifyAdminToken();
   } catch (fout) {
-    // Netwerk- of timeout-fout
+    const bericht = fout instanceof Error ? fout.message : String(fout);
+    throw new Error(`Kon Shopify Admin token niet ophalen: ${bericht}`);
+  }
+
+  // --- Eerste poging ---
+  let antwoord: Response;
+  try {
+    antwoord = await _voerFetchUit(token, lichaam);
+  } catch (fout) {
     const bericht =
       fout instanceof Error ? fout.message : "Onbekende netwerkfout";
     throw new Error(
@@ -154,12 +196,56 @@ export async function shopifyAdmin<T>(
     );
   }
 
-  // HTTP-statuscontrole
+  // --- 401-retry: invalideer token en probeer opnieuw met vers token ---
+  if (antwoord.status === 401) {
+    process.stdout.write(
+      JSON.stringify({
+        level: "WARN",
+        ts: new Date().toISOString(),
+        event: "shopify_graphql_401_retry",
+        message: "Shopify Admin API retourneerde 401 — token wordt geïnvalideerd en vernieuwd",
+        shop: env.SHOPIFY_SHOP_DOMAIN,
+      }) + "\n",
+    );
+
+    await invalidateShopifyAdminToken();
+
+    try {
+      token = await getShopifyAdminToken();
+    } catch (fout) {
+      const bericht = fout instanceof Error ? fout.message : String(fout);
+      throw new ShopifyAuthFout(
+        `Token-vernieuwing mislukt na 401: ${bericht}`,
+        401,
+      );
+    }
+
+    try {
+      antwoord = await _voerFetchUit(token, lichaam);
+    } catch (fout) {
+      const bericht =
+        fout instanceof Error ? fout.message : "Onbekende netwerkfout";
+      throw new Error(
+        `Shopify Admin API niet bereikbaar na token-vernieuwing (${env.SHOPIFY_SHOP_DOMAIN}): ${bericht}`,
+      );
+    }
+
+    // Na tweede poging nog steeds 401 — token is ingetrokken of ongeldige credentials
+    if (antwoord.status === 401) {
+      throw new ShopifyAuthFout(
+        "Token-vernieuwing mislukt — token nog steeds geweigerd na herpoging. " +
+          "Controleer SHOPIFY_API_KEY en SHOPIFY_API_SECRET in Shopify Admin.",
+        401,
+      );
+    }
+  }
+
+  // --- HTTP-statuscontrole (voor alle overige niet-2xx-statussen) ---
   if (!antwoord.ok) {
     throw new ShopifyHTTPFout(antwoord.status, antwoord.statusText);
   }
 
-  // Parseer JSON-antwoord
+  // --- Parseer JSON-antwoord ---
   let json: ShopifyGraphQLAntwoord<T>;
 
   try {
@@ -168,12 +254,12 @@ export async function shopifyAdmin<T>(
     throw new Error("Shopify API stuurde ongeldig JSON terug");
   }
 
-  // GraphQL-foutcontrole
+  // --- GraphQL-foutcontrole ---
   if (json.errors?.length) {
     throw new ShopifyGraphQLFout(json.errors, query);
   }
 
-  // Data-aanwezigheidscontrole
+  // --- Data-aanwezigheidscontrole ---
   if (json.data === undefined || json.data === null) {
     throw new Error(
       "Shopify API stuurde een antwoord zonder 'data'-veld — controleer de query",

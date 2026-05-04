@@ -22,9 +22,22 @@ const envSchema = z.object({
     .default("development"),
 
   // --- Shopify ---
+
+  /**
+   * Shopify Admin API access token (legacy/statisch).
+   *
+   * VEROUDERD: gebruik SHOPIFY_API_KEY + SHOPIFY_API_SECRET voor automatische vernieuwing.
+   * Tokens verlopen na 24u — zonder vernieuwing falen alle API-aanroepen.
+   *
+   * Terugvalpad: als SHOPIFY_API_KEY/SECRET niet zijn ingesteld, wordt dit token gebruikt.
+   * Nieuwe implementaties moeten SHOPIFY_API_KEY + SHOPIFY_API_SECRET gebruiken.
+   *
+   * @deprecated Gebruik SHOPIFY_API_KEY + SHOPIFY_API_SECRET
+   */
   SHOPIFY_ADMIN_TOKEN: z
     .string()
-    .min(1, "SHOPIFY_ADMIN_TOKEN is vereist (Shopify Admin API access token)"),
+    .min(1)
+    .optional(),
 
   SHOPIFY_SHOP_DOMAIN: z
     .string()
@@ -35,8 +48,24 @@ const envSchema = z.object({
     ),
 
   /**
-   * Shopify Custom App client secret — gebruikt voor App Proxy HMAC-verificatie.
-   * Te vinden in: Shopify Partner Dashboard → App → API credentials → Client secret.
+   * Shopify Custom App client_id — vereist voor automatische token-vernieuwing.
+   * Te vinden in: Shopify Admin → Apps → Jouw app → App credentials → API key.
+   *
+   * Aanbevolen boven SHOPIFY_ADMIN_TOKEN: tokens worden automatisch elke 24u vernieuwd.
+   * Indien niet ingesteld: terugval naar statisch SHOPIFY_ADMIN_TOKEN.
+   */
+  SHOPIFY_API_KEY: z
+    .string()
+    .min(1)
+    .optional(),
+
+  /**
+   * Shopify Custom App client secret — twee doeleinden:
+   * 1. OAuth2 client_credentials grant voor token-vernieuwing (nieuw)
+   * 2. App Proxy HMAC-verificatie (bestaand)
+   *
+   * Te vinden in: Shopify Admin → Apps → Jouw app → App credentials → Client secret.
+   * NOOIT in code opnemen of vastleggen in versiebeheer.
    */
   SHOPIFY_API_SECRET: z
     .string()
@@ -126,6 +155,42 @@ function validateEnv() {
         `De volgende variabelen ontbreken of zijn onjuist:\n${missende}\n\n` +
         `Kopieer .env.example naar .env en vul alle waarden in.\n`,
     );
+  }
+
+  // Waarschuw als noch het sleutelpaar noch het statisch token is ingesteld
+  const heeftApiSleutels = result.data.SHOPIFY_API_KEY && result.data.SHOPIFY_API_SECRET;
+  const heeftStatischToken = result.data.SHOPIFY_ADMIN_TOKEN;
+
+  if (!heeftApiSleutels && !heeftStatischToken) {
+    // Gebruik process.stderr om te vermijden dat env.server.ts een Sentry-module importeert
+    // (circulaire afhankelijkheidsrisico). De waarschuwing is zichtbaar in Coolify-logs.
+    process.stderr.write(
+      JSON.stringify({
+        level: "ERROR",
+        ts: new Date().toISOString(),
+        event: "shopify_credentials_ontbreken",
+        message:
+          "Geen Shopify-credentials geconfigureerd. " +
+          "Stel SHOPIFY_API_KEY + SHOPIFY_API_SECRET in (aanbevolen, automatische vernieuwing) " +
+          "of SHOPIFY_ADMIN_TOKEN (legacy, verloopt na 24u). " +
+          "Zonder credentials falen alle Shopify Admin API-aanroepen.",
+      }) + "\n",
+    );
+  } else if (!heeftApiSleutels && heeftStatischToken) {
+    // Informatieve waarschuwing: statisch token werkt maar verloopt na 24u
+    if (result.data.NODE_ENV !== "test") {
+      process.stderr.write(
+        JSON.stringify({
+          level: "WARN",
+          ts: new Date().toISOString(),
+          event: "shopify_token_statisch_geconfigureerd",
+          message:
+            "Shopify gebruikt statisch SHOPIFY_ADMIN_TOKEN. " +
+            "Dit token verloopt na 24u. " +
+            "Voeg SHOPIFY_API_KEY + SHOPIFY_API_SECRET toe voor automatische vernieuwing.",
+        }) + "\n",
+      );
+    }
   }
 
   return result.data;

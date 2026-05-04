@@ -50,8 +50,8 @@ interface HealthAntwoord {
  * vóórdat we een nette foutreactie kunnen sturen.
  */
 function controleerEnv(): CheckResultaat {
-  const vereist = [
-    "SHOPIFY_ADMIN_TOKEN",
+  // Altijd vereiste variabelen
+  const altijdVereist = [
     "SHOPIFY_SHOP_DOMAIN",
     "DATABASE_URL",
     "REDIS_URL",
@@ -66,7 +66,17 @@ function controleerEnv(): CheckResultaat {
     "NODE_ENV",
   ] as const;
 
-  const ontbrekend = vereist.filter((k) => !process.env[k]);
+  const ontbrekend = altijdVereist.filter((k) => !process.env[k]);
+
+  // Shopify authenticatie: SHOPIFY_API_KEY + SHOPIFY_API_SECRET ÓFTEWEL SHOPIFY_ADMIN_TOKEN
+  const heeftApiSleutels = process.env["SHOPIFY_API_KEY"] && process.env["SHOPIFY_API_SECRET"];
+  const heeftStatischToken = process.env["SHOPIFY_ADMIN_TOKEN"];
+
+  if (!heeftApiSleutels && !heeftStatischToken) {
+    ontbrekend.push(
+      "SHOPIFY_API_KEY+SHOPIFY_API_SECRET (of legacy SHOPIFY_ADMIN_TOKEN)" as never,
+    );
+  }
 
   if (ontbrekend.length > 0) {
     return {
@@ -156,15 +166,29 @@ async function controleerRedis(): Promise<CheckResultaat> {
 
 /**
  * Controleer Shopify Admin GraphQL API via een simpele shop-query.
+ * Gebruikt de token manager voor dynamische token-ophaling (incl. auto-vernieuwing).
  */
 async function controleerShopify(): Promise<CheckResultaat> {
-  const token = process.env["SHOPIFY_ADMIN_TOKEN"];
   const domein = process.env["SHOPIFY_SHOP_DOMAIN"];
+  const heeftCredentials =
+    (process.env["SHOPIFY_API_KEY"] && process.env["SHOPIFY_API_SECRET"]) ||
+    process.env["SHOPIFY_ADMIN_TOKEN"];
 
-  if (!token || !domein) {
+  if (!heeftCredentials || !domein) {
     return {
       status: "skipped",
-      details: "SHOPIFY_ADMIN_TOKEN of SHOPIFY_SHOP_DOMAIN niet ingesteld",
+      details: "Shopify-credentials of SHOPIFY_SHOP_DOMAIN niet ingesteld",
+    };
+  }
+
+  let token: string;
+  try {
+    const { getShopifyAdminToken } = await import("~/lib/shopify-token-manager.server");
+    token = await getShopifyAdminToken();
+  } catch (fout) {
+    return {
+      status: "fail",
+      details: `Kon Shopify-token niet ophalen: ${fout instanceof Error ? fout.message : String(fout)}`,
     };
   }
 
